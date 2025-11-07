@@ -1,0 +1,48 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Azure Functions artifacts
+bin
+obj
+appsettings.json
+local.settings.json
+.python_packages/
+
+# Python virtual environment
+venv/
+env/
+ENV/
+.venv
+
+# VS Code
+.vscode/
+.vs/
+
+# ML models (optional - depends on if you want to track them)
+*.pkl
+*.h5
+*.joblib
+
+# Azure
+.azure/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets
+*.pem
+*.key
+secrets.json
+
+# Testing
+.pytest_cache/
+htmlcov/
+.coverage
+
+# Distribution
+*.egg-info/
+dist/
+build/

@@ -1,0 +1,18 @@
+# Azure Functions
+azure-functions
+azure-identity
+azure-keyvault-secrets
+azure-storage-blob
+
+# ML/Data Science
+scikit-learn
+joblib
+numpy
+pandas
+
+# API/Web
+fastapi
+pydantic
+
+# Monitoring
+opencensus-ext-azure
