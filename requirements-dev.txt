@@ -1,0 +1,4 @@
+# Development dependencies (not needed in production)
+ruff
+pytest
+pytest-cov

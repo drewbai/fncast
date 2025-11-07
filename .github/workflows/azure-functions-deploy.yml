@@ -59,7 +59,17 @@ jobs:
         run: |
           echo "Installing test dependencies..."
           pip install -r requirements.txt
-          pip install pytest pytest-cov
+          pip install -r requirements-dev.txt
+
+      - name: Run Ruff linter
+        run: |
+          echo "Running Ruff linter..."
+          ruff check .
+
+      - name: Run Ruff formatter check
+        run: |
+          echo "Checking code formatting..."
+          ruff format --check .
 
       - name: Run tests with coverage
         run: |

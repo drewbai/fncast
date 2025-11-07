@@ -36,6 +36,8 @@ Thumbs.db
 *.pem
 *.key
 secrets.json
+github-secrets.json
+azure-config.json
 
 # Testing
 .pytest_cache/
