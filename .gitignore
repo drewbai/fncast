@@ -38,6 +38,7 @@ Thumbs.db
 secrets.json
 github-secrets.json
 azure-config.json
+azure-stopped-state.json
 
 # Testing
 .pytest_cache/
