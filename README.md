@@ -1,51 +1,5 @@
 # FnCast
 
-## Try It Now
-
-Quick checks you can run immediately:
-
-### Local
-
-1. Start the Functions host (from repo root):
-
-```powershell
-func host start
-```
-
-2. Health check:
-
-```powershell
-curl http://localhost:7071/api/health
-```
-
-3. Prediction (sample payload):
-
-```powershell
-curl -X POST http://localhost:7071/api/predict ^
-  -H "Content-Type: application/json" ^
-  -d "{\"features\":[0.5,-0.3,1.2,0.8,-0.5,0.1,0.9,-0.2,0.6,0.4]}"
-```
-
-### Cloud
-
-- Health (production): https://fncast-4654.azurewebsites.net/api/health
-
-- Prediction requires a function key. Retrieve it via Azure CLI, then call with `?code=<FUNCTION_KEY>`:
-
-```powershell
-az functionapp function keys list `
-  --name fncast-4654 `
-  --resource-group rg-fncast `
-  --function-name InferenceFunction `
-  --query default -o tsv
-
-curl -X POST "https://fncast-4654.azurewebsites.net/api/predict?code=<FUNCTION_KEY>" ^
-  -H "Content-Type: application/json" ^
-  -d "{\"features\":[0.5,-0.3,1.2,0.8,-0.5,0.1,0.9,-0.2,0.6,0.4]}"
-```
-
-Tip: Staging environment (if configured) is available at `https://fncast-4654-staging.azurewebsites.net`.
-
 ## 1. Executive Summary
 
 FnCast is a production‑grade, serverless compute and event‑driven automation project built on Azure Functions (Python). It delivers a secure, scalable HTTP API for machine learning inference backed by Azure Blob Storage, Azure Key Vault, and Application Insights. The design emphasizes operational excellence: minimal operational overhead via the consumption plan, strong identity and access controls with Managed Identity + RBAC, and robust observability integrated out‑of‑the‑box.
@@ -579,3 +533,51 @@ For issues or questions, please open an issue in the repository.
 ---
 
 **Built with ❤️ using Azure Functions**
+
+---
+
+## Try It Now
+
+Quick checks you can run immediately:
+
+### Local
+
+1. Start the Functions host (from repo root):
+
+```powershell
+func host start
+```
+
+2. Health check:
+
+```powershell
+curl http://localhost:7071/api/health
+```
+
+3. Prediction (sample payload):
+
+```powershell
+curl -X POST http://localhost:7071/api/predict ^
+  -H "Content-Type: application/json" ^
+  -d "{\"features\":[0.5,-0.3,1.2,0.8,-0.5,0.1,0.9,-0.2,0.6,0.4]}"
+```
+
+### Cloud
+
+- Health (production): https://fncast-4654.azurewebsites.net/api/health
+
+- Prediction requires a function key. Retrieve it via Azure CLI, then call with `?code=<FUNCTION_KEY>`:
+
+```powershell
+az functionapp function keys list `
+  --name fncast-4654 `
+  --resource-group rg-fncast `
+  --function-name InferenceFunction `
+  --query default -o tsv
+
+curl -X POST "https://fncast-4654.azurewebsites.net/api/predict?code=<FUNCTION_KEY>" ^
+  -H "Content-Type: application/json" ^
+  -d "{\"features\":[0.5,-0.3,1.2,0.8,-0.5,0.1,0.9,-0.2,0.6,0.4]}"
+```
+
+Tip: Staging environment (if configured) is available at `https://fncast-4654-staging.azurewebsites.net`.
