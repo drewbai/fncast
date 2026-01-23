@@ -112,6 +112,15 @@ d:/src/FnCast
 
 ### Setup Steps
 
+Local env setup (optional but recommended):
+
+- Create a `.env` file (ignored) using the template in [.env.example](.env.example), set:
+  - `FUNCTION_URL` (e.g., https://fncast-4654.azurewebsites.net)
+  - `FUNCTION_KEY` (function-level key for `/api/predict`)
+  - `STORAGE_ACCOUNT_NAME`, `MODEL_CONTAINER_NAME`, `MODEL_BLOB_NAME`
+  - optionally `KEY_VAULT_URL`
+- VS Code debug configs in [.vscode/launch.json](.vscode/launch.json) load `.env` and pass values to scripts.
+
 1. Install Python dependencies:
 
 ```powershell
@@ -144,9 +153,55 @@ Task: func: 0  # starts `func host start`
 # Or manually
 func host start
 ```
-curl -X POST http://localhost:7071/api/predict ^
+
+Test local endpoints (PowerShell, CMD, Bash):
+
+PowerShell (use curl.exe, include function key):
+
+```powershell
+# Health
+curl.exe "http://localhost:7071/api/health"
+
+# Inference (function-auth requires key)
+curl.exe -X POST "http://localhost:7071/api/predict?code=<your_function_key>" `
+  -H "Content-Type: application/json" `
+  -d '{"features":[0.5,-0.3,1.2,0.8,-0.5,0.1,0.9,-0.2,0.6,0.4]}'
+```
+
+CMD (Windows Command Prompt):
+
+```cmd
+rem Health
+curl http://localhost:7071/api/health
+
+rem Inference
+curl -X POST http://localhost:7071/api/predict?code=<your_function_key> ^
   -H "Content-Type: application/json" ^
   -d "{\"features\":[0.5,-0.3,1.2,0.8,-0.5,0.1,0.9,-0.2,0.6,0.4]}"
+```
+
+Bash (macOS/Linux):
+
+```bash
+# Health
+curl "http://localhost:7071/api/health"
+
+# Inference
+curl -X POST "http://localhost:7071/api/predict?code=<your_function_key>" \
+  -H "Content-Type: application/json" \
+  -d '{"features":[0.5,-0.3,1.2,0.8,-0.5,0.1,0.9,-0.2,0.6,0.4]}'
+```
+
+Note: You can pass the key via header instead of query string:
+
+```bash
+-H "x-functions-key: <your_function_key>"
+Using VS Code launch configs (no fishing):
+
+- Train model: Debug → "Train sample model"
+- Upload model: Debug → "Upload model to Blob" (reads storage/model values from `.env`)
+- Test cloud predict: Debug → "Test cloud function (predict)" (reads URL/key from `.env`)
+```
 
 ```powershell
 pytest -q
