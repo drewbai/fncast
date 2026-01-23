@@ -3,7 +3,7 @@
 
 [tool.ruff]
 # Python version
-target-version = "py311"
+target-version = "py312"
 
 # Line length
 line-length = 100

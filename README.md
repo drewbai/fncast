@@ -74,9 +74,6 @@ This project exists to demonstrate how to take an ML artifact from training to r
 d:/src/FnCast
 ├── AZ204_EXAM_MAPPING_FNCAST.md
 ├── AZ204_FNCAST_MATRIX.md
-├── azure-config.json
-├── azure-stopped-state.json
-├── fncast issues.csv
 ├── github-secrets.json
 ├── host.json
 ├── local.settings.json
@@ -107,7 +104,6 @@ d:/src/FnCast
 ## 6. Quick Start Guide
 
 ### Prerequisites
-
 - Windows with PowerShell, Python 3.11, and Git
 - Azure CLI (`az`) and Azure Functions Core Tools
 - An Azure subscription and rights to create resources
@@ -117,7 +113,6 @@ d:/src/FnCast
 1. Install Python dependencies:
 
 ```powershell
-# VS Code task (preferred)
 Task: "pip install (functions)"
 
 # Or manually
@@ -126,7 +121,6 @@ ${env:azureFunctions_pythonVenv}\Scripts\python -m pip install -r requirements.t
 
 2. Provision Azure resources (resource group, storage, App Insights, function app, service principal):
 
-```powershell
 pwsh ./scripts/setup_azure.ps1
 ```
 
@@ -134,12 +128,10 @@ pwsh ./scripts/setup_azure.ps1
 
 ```powershell
 python ./scripts/train_model.py
-python ./scripts/upload_model.py --storage-account <yourStorage> --container models --model-file model.pkl
 ```
 
 4. Configure local settings (dev only) in `local.settings.json` (already scaffolded): ensure `KEY_VAULT_URL`, `STORAGE_ACCOUNT_NAME`, `MODEL_CONTAINER_NAME`, `MODEL_BLOB_NAME` are correct.
 
-### Commands for Local Development
 
 - Start the function host:
 
@@ -150,17 +142,9 @@ Task: func: 0  # starts `func host start`
 # Or manually
 func host start
 ```
-
-- Test endpoints locally:
-
-```powershell
-curl http://localhost:7071/api/health
 curl -X POST http://localhost:7071/api/predict ^
   -H "Content-Type: application/json" ^
   -d "{\"features\":[0.5,-0.3,1.2,0.8,-0.5,0.1,0.9,-0.2,0.6,0.4]}"
-```
-
-- Run unit tests:
 
 ```powershell
 pytest -q
@@ -178,8 +162,6 @@ pytest -q
 ```powershell
 az functionapp deployment source config-zip `
   --name <functionAppName> `
-  --resource-group <rgName> `
-  --src .\dist.zip
 ```
 
 ## 7. CI/CD Pipeline
@@ -196,18 +178,9 @@ Git Push → GitHub Actions → Build → Test → Package → Deploy → Valida
 ```
 
 **What is automated:**
-- Environment provisioning helper (`setup_azure.ps1`) for RG, storage, insights, function app, and SP creation
-- Secret materialization for Actions via generated JSON/XML outputs
-- Post‑deploy health verification (hit `/api/health`)
-
 ## 8. Security Best Practices
 
 - **Secrets:** No embedded credentials. The app retrieves secrets via Azure Key Vault (`KEY_VAULT_URL`); `DefaultAzureCredential` resolves Managed Identity in Azure.
-- **RBAC:** Function App identity assigned `Storage Blob Data Contributor` on the storage account and `Key Vault Secrets User` on the vault (defined in `infrastructure/main.bicep`).
-- **Managed identity:** System‑assigned identity for the Function App; eliminates secret sprawl and supports rotation.
-- **Network considerations:** HTTPS‑only Function App; Storage with `supportsHttpsTrafficOnly`, `minimumTlsVersion = TLS1_2`, and public blob access disabled. Consider private endpoints and vNet integration in production.
-- **Auth levels:** `/api/predict` uses `authLevel = "function"`; `/api/health` uses `authLevel = "anonymous"` for operability.
-
 ## 9. Monitoring & Observability
 
 - **What is tracked:** Request/exception telemetry, traces, and custom logs via Application Insights; sampling configured in `host.json` to reduce noise.
