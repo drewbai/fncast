@@ -9,6 +9,8 @@ on:
     branches:
       - main
       - develop
+  workflow_dispatch:
+
 
 env:
   PYTHON_VERSION: '3.11'
@@ -86,7 +88,7 @@ jobs:
   deploy-production:
     runs-on: ubuntu-latest
     needs: [build, test]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     environment:
       name: production
       url: https://${{ secrets.AZURE_FUNCTION_APP_NAME }}.azurewebsites.net
@@ -111,7 +113,7 @@ jobs:
   deploy-staging:
     runs-on: ubuntu-latest
     needs: [build, test]
-    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/develop' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     environment:
       name: staging
       url: https://${{ secrets.AZURE_FUNCTION_APP_NAME }}-staging.azurewebsites.net
