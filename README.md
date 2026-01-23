@@ -1,3 +1,269 @@
+# FnCast
+
+## 1. Executive Summary
+
+FnCast is a production‑grade, serverless compute and event‑driven automation project built on Azure Functions (Python). It delivers a secure, scalable HTTP API for machine learning inference backed by Azure Blob Storage, Azure Key Vault, and Application Insights. The design emphasizes operational excellence: minimal operational overhead via the consumption plan, strong identity and access controls with Managed Identity + RBAC, and robust observability integrated out‑of‑the‑box.
+
+This project exists to demonstrate how to take an ML artifact from training to runtime in a cloud‑native, serverless architecture—without exposing secrets, while maintaining auditability and cost efficiency. It targets real outcomes important to engineering leaders: clear separation between infrastructure and application code (IaC with Bicep), practical CI/CD integration (GitHub Actions‑ready), and hardened operational controls (App settings, Key Vault, and strict auth levels).
+
+## 2. What This Project Demonstrates
+
+- Cloud‑native serverless API for ML inference on Azure Functions (Python)
+- Secure secret management with Azure Key Vault and Managed Identity
+- Data access via Azure Blob Storage with role‑based permissions
+- Infrastructure as Code using Bicep with environment parameters
+- Production observability with Application Insights and sampling controls
+- Automated environment lifecycle scripts (cost saving and restart flows)
+- Unit‑tested function endpoints with fast local iteration
+
+## 3. Skills & Competencies Mapping
+
+- **Cloud:** Azure Functions, Storage Accounts, Application Insights, Key Vault
+- **DevOps:** GitHub Actions‑ready workflow, service principal provisioning, repeatable environment setup
+- **IaC:** Bicep templates for function app, storage, insights, vault, and RBAC role assignments
+- **Serverless:** HTTP triggers with function/anonymous auth levels, consumption plan scaling (`Y1`)
+- **Observability:** App Insights, host sampling, structured logs, testable endpoints
+- **Security:** Managed Identity (system‑assigned), RBAC (Blob Data Contributor, Key Vault Secrets User), HTTPS only
+- **Python engineering:** Azure Functions (Python 3.11), structured handlers, model IO with `joblib`, unit tests with `pytest`
+
+## 4. Architecture Overview
+
+```
+                        +---------------------------+
+                        |        Client (HTTP)      |
+                        |  - /api/health (GET)      |
+                        |  - /api/predict (POST)    |
+                        +-------------+-------------+
+                                      |
+                                      v
+                          +-----------+-----------+
+                          |     Azure Functions   |
+                          |   (Python, ~4, 3.11)  |
+                          |  - HealthCheckFunction |
+                          |  - InferenceFunction   |
+                          +-----------+-----------+
+                                      |
+                    Managed Identity   |   Structured Logs
+                                      |          |
+                                      v          v
+       +---------------------+   +----+----+   +--------------------+
+       | Azure Blob Storage  |   | KeyVault |   | ApplicationInsights |
+       |  models/container   |   |  Secrets |   |   Telemetry/Queries |
+       +----------+----------+   +---------+   +----------+---------+
+                  ^                                   ^
+                  |                                   |
+            Model uploads                      Queries/Monitoring
+            (scripts/upload_model.py)          (App Insights)
+```
+
+**Why this design:**
+- Serverless fast path for ML inference with minimal operational toil and elastic scale.
+- Strong identity posture: the function app uses a system‑assigned Managed Identity to access Blob Storage and Key Vault (no embedded credentials).
+- Separation of concerns: IaC declares resources and RBAC, app code focuses on handling requests and model IO.
+- Observability first: Application Insights integrated via host settings and app environment.
+
+**Key tradeoffs and benefits:**
+- Consumption plan (`Y1`) reduces cost at low traffic but introduces cold starts; acceptable for non‑latency‑critical workloads.
+- Model loading from Blob on first request caches in memory; improves steady‑state latency at the cost of initial warm‑up.
+- RBAC+Managed Identity removes secret sprawl; requires deliberate role assignments (handled in Bicep).
+- HTTP function auth: `function` level for `/api/predict` balances security and ease of use; `anonymous` for `/api/health` improves operability.
+
+## 5. Project Structure
+
+```
+d:/src/FnCast
+├── AZ204_EXAM_MAPPING_FNCAST.md
+├── AZ204_FNCAST_MATRIX.md
+├── azure-config.json
+├── azure-stopped-state.json
+├── fncast issues.csv
+├── github-secrets.json
+├── host.json
+├── local.settings.json
+├── pyproject.toml
+├── README.md
+├── requirements-dev.txt
+├── requirements.txt
+├── HealthCheckFunction/
+│   ├── __init__.py            # GET /api/health (anonymous); returns service status
+│   └── function.json          # HTTP trigger and binding config
+├── InferenceFunction/
+│   ├── __init__.py            # POST /api/predict (function auth); loads model from Blob via MI
+│   └── function.json          # HTTP trigger and binding config
+├── infrastructure/
+│   ├── main.bicep             # Function App, Storage, Key Vault, App Insights, RBAC
+│   └── parameters.json        # Name, environment, and location parameters
+├── scripts/
+│   ├── setup_azure.ps1        # Provision RG, Storage, Insights, Function App, SP for CI/CD
+│   ├── dehydrate_azure.ps1    # Stop resources to minimize costs; saves state
+│   ├── rehydrate_azure.ps1    # Restart resources; validates health
+│   ├── train_model.py         # Sample training pipeline; saves `model.pkl`
+│   └── upload_model.py        # Uploads `model.pkl` to Blob with Managed Identity
+└── tests/
+    ├── test_health.py         # Unit tests for health endpoint
+    └── test_inference.py      # Unit tests for inference endpoint
+```
+
+## 6. Quick Start Guide
+
+### Prerequisites
+
+- Windows with PowerShell, Python 3.11, and Git
+- Azure CLI (`az`) and Azure Functions Core Tools
+- An Azure subscription and rights to create resources
+
+### Setup Steps
+
+1. Install Python dependencies:
+
+```powershell
+# VS Code task (preferred)
+Task: "pip install (functions)"
+
+# Or manually
+${env:azureFunctions_pythonVenv}\Scripts\python -m pip install -r requirements.txt
+```
+
+2. Provision Azure resources (resource group, storage, App Insights, function app, service principal):
+
+```powershell
+pwsh ./scripts/setup_azure.ps1
+```
+
+3. Train and upload a sample model:
+
+```powershell
+python ./scripts/train_model.py
+python ./scripts/upload_model.py --storage-account <yourStorage> --container models --model-file model.pkl
+```
+
+4. Configure local settings (dev only) in `local.settings.json` (already scaffolded): ensure `KEY_VAULT_URL`, `STORAGE_ACCOUNT_NAME`, `MODEL_CONTAINER_NAME`, `MODEL_BLOB_NAME` are correct.
+
+### Commands for Local Development
+
+- Start the function host:
+
+```powershell
+# VS Code task (background)
+Task: func: 0  # starts `func host start`
+
+# Or manually
+func host start
+```
+
+- Test endpoints locally:
+
+```powershell
+curl http://localhost:7071/api/health
+curl -X POST http://localhost:7071/api/predict ^
+  -H "Content-Type: application/json" ^
+  -d "{\"features\":[0.5,-0.3,1.2,0.8,-0.5,0.1,0.9,-0.2,0.6,0.4]}"
+```
+
+- Run unit tests:
+
+```powershell
+pytest -q
+```
+
+### Deployment Steps
+
+- GitHub Actions (recommended): Use `setup_azure.ps1` to create a service principal and publish profile, then add secrets:
+  - `AZURE_FUNCTION_APP_NAME`
+  - `AZURE_CREDENTIALS` (JSON from the script)
+  - `AZURE_FUNCTIONAPP_PUBLISH_PROFILE` (XML from the script)
+
+- Azure CLI deploy (alternative):
+
+```powershell
+az functionapp deployment source config-zip `
+  --name <functionAppName> `
+  --resource-group <rgName> `
+  --src .\dist.zip
+```
+
+## 7. CI/CD Pipeline
+
+**Stages:**
+- Build: install dependencies, lint, run unit tests
+- Package: prepare function app artifact
+- Deploy: publish to Azure Function App using service principal credentials
+
+**Flow Diagram:**
+
+```
+Git Push → GitHub Actions → Build → Test → Package → Deploy → Validate Health
+```
+
+**What is automated:**
+- Environment provisioning helper (`setup_azure.ps1`) for RG, storage, insights, function app, and SP creation
+- Secret materialization for Actions via generated JSON/XML outputs
+- Post‑deploy health verification (hit `/api/health`)
+
+## 8. Security Best Practices
+
+- **Secrets:** No embedded credentials. The app retrieves secrets via Azure Key Vault (`KEY_VAULT_URL`); `DefaultAzureCredential` resolves Managed Identity in Azure.
+- **RBAC:** Function App identity assigned `Storage Blob Data Contributor` on the storage account and `Key Vault Secrets User` on the vault (defined in `infrastructure/main.bicep`).
+- **Managed identity:** System‑assigned identity for the Function App; eliminates secret sprawl and supports rotation.
+- **Network considerations:** HTTPS‑only Function App; Storage with `supportsHttpsTrafficOnly`, `minimumTlsVersion = TLS1_2`, and public blob access disabled. Consider private endpoints and vNet integration in production.
+- **Auth levels:** `/api/predict` uses `authLevel = "function"`; `/api/health` uses `authLevel = "anonymous"` for operability.
+
+## 9. Monitoring & Observability
+
+- **What is tracked:** Request/exception telemetry, traces, and custom logs via Application Insights; sampling configured in `host.json` to reduce noise.
+- **How to view logs:** App Insights Logs (Kusto) in the Azure Portal; validate function health with `rehydrate_azure.ps1` post‑start.
+- **Example queries:**
+
+```kusto
+requests
+| where url endswith "/api/predict"
+| summarize count() by resultCode
+
+traces
+| where message contains "ML Inference"
+| project timestamp, message, severityLevel
+
+exceptions
+| where innermostMessage contains "Failed to load model"
+| summarize count() by problemId
+```
+
+## 10. Cost Model
+
+- **Dev vs prod:** Consumption plan (`Y1`) charges per execution and resources consumed; idle costs are minimal. Storage and Insights have baseline retention/storage costs.
+- **Optimization notes:**
+  - Use `dehydrate_azure.ps1` to stop the function app when idle; `rehydrate_azure.ps1` to restart.
+  - Tune Application Insights sampling (`host.json`).
+  - Right‑size retention policies in App Insights; compress/optimize model size.
+
+## 11. Cleanup Instructions
+
+```powershell
+# Stop function app to immediately cut execution costs
+pwsh ./scripts/dehydrate_azure.ps1
+
+# Optionally remove all resources (irreversible)
+az group delete --name <rg-fncast> --yes --no-wait
+```
+
+## 12. Learning Outcomes
+
+- Demonstrated secure, serverless ML inference on Azure with Managed Identity and RBAC.
+- Authored IaC (Bicep) for complete environment provisioning including role assignments.
+- Implemented observability and meaningful tests for endpoints.
+- Operationalized cost controls and environment lifecycle with PowerShell scripts.
+
+## 13. Resume‑Ready Highlights
+
+- Built a production‑grade Azure Functions (Python) ML inference API with Managed Identity, Key Vault, Blob Storage, and Application Insights.
+- Authored end‑to‑end IaC in Bicep including RBAC role assignments for least‑privilege access.
+- Implemented CI/CD (GitHub Actions‑ready) with service principal provisioning and secure secret handling.
+- Added unit tests and local developer workflow (Functions Core Tools, pytest) for fast iteration.
+- Reduced operational cost via automated dehydrate/rehydrate scripts and host sampling.
+
+## 14. License + Final Notes
+
+This repository is provided for educational and portfolio demonstration purposes. If you plan to use FnCast in production, review network isolation, private endpoints, and compliance requirements, and extend CI/CD automation with environment‑specific gates and secrets rotation.
 # FnCast - Serverless ML Inference API
 
 🎯 **Goal**: Deploy a lightweight ML model as a serverless API using Azure Functions, with secure access via Key Vault and Blob Storage.
