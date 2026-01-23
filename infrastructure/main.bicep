@@ -145,7 +145,7 @@ resource functionApp 'Microsoft.Web/sites@2023-01-01' = {
           value: 'model.pkl'
         }
       ]
-      pythonVersion: '3.11'
+      pythonVersion: '3.12'
     }
   }
 }

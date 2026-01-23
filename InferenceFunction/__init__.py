@@ -122,10 +122,20 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         
         # Make prediction
         prediction = model.predict([features])
-        
+
+        # Normalize prediction to a JSON-serializable list
+        if hasattr(prediction, "tolist"):
+            pred_out = prediction.tolist()
+        else:
+            # Fallback for plain Python lists or scalars
+            try:
+                pred_out = list(prediction)
+            except TypeError:
+                pred_out = [prediction]
+
         # Prepare response
         response = {
-            "prediction": prediction.tolist(),
+            "prediction": pred_out,
             "status": "success"
         }
         
