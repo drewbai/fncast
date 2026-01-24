@@ -201,6 +201,88 @@ Using VS Code launch configs (no fishing):
 - Train model: Debug → "Train sample model"
 - Upload model: Debug → "Upload model to Blob" (reads storage/model values from `.env`)
 - Test cloud predict: Debug → "Test cloud function (predict)" (reads URL/key from `.env`)
+
+#### Sample VS Code launch.json
+
+You can copy this into your local [.vscode/launch.json](.vscode/launch.json) or adapt as needed. It loads variables from `.env` and adds `justMyCode` for cleaner debugging.
+
+```jsonc
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Attach to Python Functions",
+      "type": "python",
+      "request": "attach",
+      "port": 9091,
+      "preLaunchTask": "func: host start"
+    },
+    {
+      "name": "Train sample model",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/train_model.py",
+      "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}/.env",
+      "justMyCode": true
+    },
+    {
+      "name": "Upload model to Blob",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/upload_model.py",
+      "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}/.env",
+      "justMyCode": true,
+      "args": [
+        "--storage-account",
+        "${env:STORAGE_ACCOUNT_NAME}",
+        "--container",
+        "${env:MODEL_CONTAINER_NAME}",
+        "--model-file",
+        "${env:MODEL_BLOB_NAME}"
+      ]
+    },
+    {
+      "name": "Test cloud function (predict)",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/test_function.py",
+      "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}/.env",
+      "justMyCode": true,
+      "args": [
+        "--url",
+        "${env:FUNCTION_URL}",
+        "--key",
+        "${env:FUNCTION_KEY}"
+      ]
+    }
+  ]
+}
+```
+
+#### Sample .env
+
+Copy this into a local `.env` (ignored) and update the function key. These defaults match the Bicep parameters (`projectName=fncast`, `environment=dev`).
+
+```ini
+# --- Cloud function (dev) ---
+FUNCTION_URL=https://fncast-dev-func.azurewebsites.net
+FUNCTION_KEY=<paste_function_key_here>
+
+# --- Storage & Model ---
+STORAGE_ACCOUNT_NAME=fncastdevstorage
+MODEL_CONTAINER_NAME=models
+MODEL_BLOB_NAME=model.pkl
+
+# --- Key Vault (optional for local runs) ---
+KEY_VAULT_URL=https://fncast-dev-kv.vault.azure.net/
+
+# --- Alternative (existing public app) ---
+# FUNCTION_URL=https://fncast-4654.azurewebsites.net
+# FUNCTION_KEY=<paste_function_key_here>
+```
 ```
 
 ```powershell
@@ -345,7 +427,7 @@ This repository is provided for educational and portfolio demonstration purposes
 - **Security**: Azure Key Vault, Managed Identity
 - **Monitoring**: Application Insights
 - **IaC**: Bicep
-- **CI/CD**: GitLab CI/CD
+ - **CI/CD**: GitHub Actions
 
 ## 📁 Project Structure
 
@@ -367,7 +449,7 @@ FnCast/
 ├── tests/                      # Unit tests
 │   ├── test_inference.py
 │   └── test_health.py
-├── .gitlab-ci.yml             # CI/CD pipeline
+├── .github/workflows/azure-functions-deploy.yml  # GitHub Actions pipeline
 ├── requirements.txt           # Python dependencies
 ├── host.json                  # Function app config
 ├── local.settings.json        # Local dev settings
@@ -526,18 +608,55 @@ Health check endpoint.
 
 ## 🔄 CI/CD Pipeline
 
-GitLab CI/CD pipeline includes:
+GitHub Actions pipeline includes:
 - **Build**: Install dependencies, create deployment package
 - **Test**: Run unit tests with coverage
 - **Deploy**: Deploy to Azure Functions
 
-Set these variables in GitLab:
-- `AZURE_SUBSCRIPTION_ID`
-- `AZURE_RESOURCE_GROUP`
+Set these secrets in GitHub Actions (Settings → Secrets and variables → Actions):
 - `AZURE_FUNCTION_APP_NAME`
-- `AZURE_CLIENT_ID`
-- `AZURE_CLIENT_SECRET`
-- `AZURE_TENANT_ID`
+- `AZURE_CREDENTIALS` (JSON from service principal creation; use `--sdk-auth`)
+- `AZURE_FUNCTIONAPP_PUBLISH_PROFILE` (XML publish profile)
+- `AZURE_FUNCTIONAPP_PUBLISH_PROFILE_STAGING` (XML publish profile for staging, if used)
+
+Generate `AZURE_CREDENTIALS` with a least-privilege service principal (paste the JSON output into the GitHub secret):
+
+```powershell
+# Get your subscription id if needed
+az account show --query id -o tsv
+
+# Create SP scoped to the resource group
+az ad sp create-for-rbac `
+  --name fncast-ci `
+  --role Contributor `
+  --scopes /subscriptions/<SUBSCRIPTION_ID>/resourceGroups/fncast-rg `
+  --sdk-auth
+
+# Copy the JSON output into the GitHub Action secret named AZURE_CREDENTIALS
+```
+
+For a staging resource group, create a separate principal and scope:
+
+```powershell
+az ad sp create-for-rbac `
+  --name fncast-ci-staging `
+  --role Contributor `
+  --scopes /subscriptions/<SUBSCRIPTION_ID>/resourceGroups/fncast-rg-staging `
+  --sdk-auth
+```
+
+Least-privilege tips:
+- Scope the role to the minimal target (resource group or even a single function app):
+  ```powershell
+  # Scope to a single Function App resource
+  az ad sp create-for-rbac `
+    --name fncast-ci-app `
+    --role Contributor `
+    --scopes /subscriptions/<SUBSCRIPTION_ID>/resourceGroups/fncast-rg/providers/Microsoft.Web/sites/fncast-dev-func `
+    --sdk-auth
+  ```
+- If you use `AZURE_FUNCTIONAPP_PUBLISH_PROFILE`, you can deploy without broad `Contributor` on the RG; the publish profile grants access only to the app.
+- Keep separate principals for dev/staging/prod and rotate credentials periodically.
 
 ## 🎓 Lessons Learned
 
@@ -548,9 +667,9 @@ Track your progress in OneNote:
 
 ## 📦 Deliverables
 
-- ✅ `functionapp.zip` with inference logic
-- ✅ Bicep infrastructure templates
-- ✅ GitLab CI/CD pipeline
+-- ✅ `functionapp.zip` with inference logic
+-- ✅ Bicep infrastructure templates
+-- ✅ GitHub Actions pipeline
 - ✅ Unit tests with coverage
 - ✅ README with setup and usage guide
 - ✅ Sample scripts for training and testing
