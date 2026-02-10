@@ -1,7 +1,5 @@
 # FnCast
 
-🔎 Live Health: https://fncast-4654.azurewebsites.net/api/health • Local: http://localhost:7071/api/health
-
 ## 1. Executive Summary
 
 FnCast is a production‑grade, serverless compute and event‑driven automation project built on Azure Functions (Python). It delivers a secure, scalable HTTP API for machine learning inference backed by Azure Blob Storage, Azure Key Vault, and Application Insights. The design emphasizes operational excellence: minimal operational overhead via the consumption plan, strong identity and access controls with Managed Identity + RBAC, and robust observability integrated out‑of‑the‑box.
@@ -112,15 +110,6 @@ d:/src/FnCast
 
 ### Setup Steps
 
-Local env setup (optional but recommended):
-
-- Create a `.env` file (ignored) using the template in [.env.example](.env.example), set:
-  - `FUNCTION_URL` (e.g., https://fncast-4654.azurewebsites.net)
-  - `FUNCTION_KEY` (function-level key for `/api/predict`)
-  - `STORAGE_ACCOUNT_NAME`, `MODEL_CONTAINER_NAME`, `MODEL_BLOB_NAME`
-  - optionally `KEY_VAULT_URL`
-- VS Code debug configs in [.vscode/launch.json](.vscode/launch.json) load `.env` and pass values to scripts.
-
 1. Install Python dependencies:
 
 ```powershell
@@ -153,137 +142,9 @@ Task: func: 0  # starts `func host start`
 # Or manually
 func host start
 ```
-
-Test local endpoints (PowerShell, CMD, Bash):
-
-PowerShell (use curl.exe, include function key):
-
-```powershell
-# Health
-curl.exe "http://localhost:7071/api/health"
-
-# Inference (function-auth requires key)
-curl.exe -X POST "http://localhost:7071/api/predict?code=<your_function_key>" `
-  -H "Content-Type: application/json" `
-  -d '{"features":[0.5,-0.3,1.2,0.8,-0.5,0.1,0.9,-0.2,0.6,0.4]}'
-```
-
-CMD (Windows Command Prompt):
-
-```cmd
-rem Health
-curl http://localhost:7071/api/health
-
-rem Inference
-curl -X POST http://localhost:7071/api/predict?code=<your_function_key> ^
+curl -X POST http://localhost:7071/api/predict ^
   -H "Content-Type: application/json" ^
   -d "{\"features\":[0.5,-0.3,1.2,0.8,-0.5,0.1,0.9,-0.2,0.6,0.4]}"
-```
-
-Bash (macOS/Linux):
-
-```bash
-# Health
-curl "http://localhost:7071/api/health"
-
-# Inference
-curl -X POST "http://localhost:7071/api/predict?code=<your_function_key>" \
-  -H "Content-Type: application/json" \
-  -d '{"features":[0.5,-0.3,1.2,0.8,-0.5,0.1,0.9,-0.2,0.6,0.4]}'
-```
-
-Note: You can pass the key via header instead of query string:
-
-```bash
--H "x-functions-key: <your_function_key>"
-Using VS Code launch configs (no fishing):
-
-- Train model: Debug → "Train sample model"
-- Upload model: Debug → "Upload model to Blob" (reads storage/model values from `.env`)
-- Test cloud predict: Debug → "Test cloud function (predict)" (reads URL/key from `.env`)
-
-#### Sample VS Code launch.json
-
-You can copy this into your local [.vscode/launch.json](.vscode/launch.json) or adapt as needed. It loads variables from `.env` and adds `justMyCode` for cleaner debugging.
-
-```jsonc
-{
-  "version": "0.2.0",
-  "configurations": [
-    {
-      "name": "Attach to Python Functions",
-      "type": "python",
-      "request": "attach",
-      "port": 9091,
-      "preLaunchTask": "func: host start"
-    },
-    {
-      "name": "Train sample model",
-      "type": "python",
-      "request": "launch",
-      "program": "${workspaceFolder}/scripts/train_model.py",
-      "console": "integratedTerminal",
-      "envFile": "${workspaceFolder}/.env",
-      "justMyCode": true
-    },
-    {
-      "name": "Upload model to Blob",
-      "type": "python",
-      "request": "launch",
-      "program": "${workspaceFolder}/scripts/upload_model.py",
-      "console": "integratedTerminal",
-      "envFile": "${workspaceFolder}/.env",
-      "justMyCode": true,
-      "args": [
-        "--storage-account",
-        "${env:STORAGE_ACCOUNT_NAME}",
-        "--container",
-        "${env:MODEL_CONTAINER_NAME}",
-        "--model-file",
-        "${env:MODEL_BLOB_NAME}"
-      ]
-    },
-    {
-      "name": "Test cloud function (predict)",
-      "type": "python",
-      "request": "launch",
-      "program": "${workspaceFolder}/scripts/test_function.py",
-      "console": "integratedTerminal",
-      "envFile": "${workspaceFolder}/.env",
-      "justMyCode": true,
-      "args": [
-        "--url",
-        "${env:FUNCTION_URL}",
-        "--key",
-        "${env:FUNCTION_KEY}"
-      ]
-    }
-  ]
-}
-```
-
-#### Sample .env
-
-Copy this into a local `.env` (ignored) and update the function key. These defaults match the Bicep parameters (`projectName=fncast`, `environment=dev`).
-
-```ini
-# --- Cloud function (dev) ---
-FUNCTION_URL=https://fncast-dev-func.azurewebsites.net
-FUNCTION_KEY=<paste_function_key_here>
-
-# --- Storage & Model ---
-STORAGE_ACCOUNT_NAME=fncastdevstorage
-MODEL_CONTAINER_NAME=models
-MODEL_BLOB_NAME=model.pkl
-
-# --- Key Vault (optional for local runs) ---
-KEY_VAULT_URL=https://fncast-dev-kv.vault.azure.net/
-
-# --- Alternative (existing public app) ---
-# FUNCTION_URL=https://fncast-4654.azurewebsites.net
-# FUNCTION_KEY=<paste_function_key_here>
-```
-```
 
 ```powershell
 pytest -q
@@ -376,69 +237,6 @@ az group delete --name <rg-fncast> --yes --no-wait
 ## 14. License + Final Notes
 
 This repository is provided for educational and portfolio demonstration purposes. If you plan to use FnCast in production, review network isolation, private endpoints, and compliance requirements, and extend CI/CD automation with environment‑specific gates and secrets rotation.
-
----
-
-## Parity with fncast-dotnet
-
-To align with the sister project [fnCast-dotNet](https://github.com/drewbai/fnCast-dotNet), this repo now includes:
-
-- New endpoints and triggers:
-  - [HttpIngestFunction/__init__.py](HttpIngestFunction/__init__.py) — POST `/api/ingest` supporting `text/plain` and `application/json` payloads with placeholder inference modes configured via `INFERENCE_MODE` (`Uppercase` | `Lowercase` | `Echo`).
-  - [QueueIngestFunction/__init__.py](QueueIngestFunction/__init__.py) — Azure Storage Queue trigger (`fncast-events`) mirroring the dotnet queue ingest.
-  - [EventGridIngestFunction/__init__.py](EventGridIngestFunction/__init__.py) — Event Grid trigger for ingesting custom topic events.
-- Infra additions in [infrastructure/main.bicep](infrastructure/main.bicep): provisions a Storage Queue (`fncast-events`) and an Event Grid topic with outputs for quick wiring.
-- Docs & demos:
-  - One‑click requests in [docs/requests.http](docs/requests.http) for health and ingest.
-  - Quick demo script [docs/scripts/demo-presentation.ps1](docs/scripts/demo-presentation.ps1).
-  - Queue producer [docs/scripts/publish-queue-message.ps1](docs/scripts/publish-queue-message.ps1).
-  - Event Grid publisher [docs/scripts/publish-eventgrid.ps1](docs/scripts/publish-eventgrid.ps1).
-  - Diagrams in [docs/diagrams.md](docs/diagrams.md) and Postman collection in [docs/postman/fncast.postman_collection.json](docs/postman/fncast.postman_collection.json).
-
-Quick demo locally:
-
-```powershell
-# Start the Functions host (ensure deps installed)
-func host start
-
-# Run the presentation demo
-./docs/scripts/demo-presentation.ps1 -FunctionsBaseUrl http://localhost:7071
-```
-
-Configure inference behavior:
-
-```powershell
-$env:INFERENCE_MODE = 'Uppercase'  # or 'Lowercase', 'Echo'
-```
-
-Optional: Publish a test message to the queue (requires Storage connection string):
-
-```powershell
-./docs/scripts/publish-queue-message.ps1 -ConnectionString '<storage-connection-string>' -Message 'hello'
-```
-
-Publish an Event Grid demo event:
-
-```powershell
-./docs/scripts/publish-eventgrid.ps1 -ResourceGroup <rg> -TopicName <topic> -Subject demo -Data '{"message":"hello"}'
-```
-
-After deploying via Bicep, you can create an Event Grid subscription pointing to `EventGridIngestFunction` using the Function key, similar to the dotnet README.
-
-## CI
-
-- Build & Test: [\.github/workflows/ci.yml](.github/workflows/ci.yml) runs Python 3.12, installs dependencies, and executes `pytest` on push/PR.
-- Deploy Functions: [\.github/workflows/deploy-functions.yml](.github/workflows/deploy-functions.yml) publishes the app to Azure using repository variable `AZURE_FUNCTIONAPP_NAME` and secret `AZURE_FUNCTIONAPP_PUBLISH_PROFILE`.
-
-## Local Queues (Azurite)
-
-For local queue testing, install and run Azurite, then set `AzureWebJobsStorage=UseDevelopmentStorage=true` in `local.settings.json`:
-
-```powershell
-npm install -g azurite
-azurite -l .azurite --silent --skipApiVersionCheck
-```
-
 # FnCast - Serverless ML Inference API
 
 🎯 **Goal**: Deploy a lightweight ML model as a serverless API using Azure Functions, with secure access via Key Vault and Blob Storage.
@@ -490,7 +288,7 @@ azurite -l .azurite --silent --skipApiVersionCheck
 - **Security**: Azure Key Vault, Managed Identity
 - **Monitoring**: Application Insights
 - **IaC**: Bicep
- - **CI/CD**: GitHub Actions
+- **CI/CD**: GitLab CI/CD
 
 ## 📁 Project Structure
 
@@ -512,7 +310,7 @@ FnCast/
 ├── tests/                      # Unit tests
 │   ├── test_inference.py
 │   └── test_health.py
-├── .github/workflows/azure-functions-deploy.yml  # GitHub Actions pipeline
+├── .gitlab-ci.yml             # CI/CD pipeline
 ├── requirements.txt           # Python dependencies
 ├── host.json                  # Function app config
 ├── local.settings.json        # Local dev settings
@@ -671,55 +469,18 @@ Health check endpoint.
 
 ## 🔄 CI/CD Pipeline
 
-GitHub Actions pipeline includes:
+GitLab CI/CD pipeline includes:
 - **Build**: Install dependencies, create deployment package
 - **Test**: Run unit tests with coverage
 - **Deploy**: Deploy to Azure Functions
 
-Set these secrets in GitHub Actions (Settings → Secrets and variables → Actions):
+Set these variables in GitLab:
+- `AZURE_SUBSCRIPTION_ID`
+- `AZURE_RESOURCE_GROUP`
 - `AZURE_FUNCTION_APP_NAME`
-- `AZURE_CREDENTIALS` (JSON from service principal creation; use `--sdk-auth`)
-- `AZURE_FUNCTIONAPP_PUBLISH_PROFILE` (XML publish profile)
-- `AZURE_FUNCTIONAPP_PUBLISH_PROFILE_STAGING` (XML publish profile for staging, if used)
-
-Generate `AZURE_CREDENTIALS` with a least-privilege service principal (paste the JSON output into the GitHub secret):
-
-```powershell
-# Get your subscription id if needed
-az account show --query id -o tsv
-
-# Create SP scoped to the resource group
-az ad sp create-for-rbac `
-  --name fncast-ci `
-  --role Contributor `
-  --scopes /subscriptions/<SUBSCRIPTION_ID>/resourceGroups/fncast-rg `
-  --sdk-auth
-
-# Copy the JSON output into the GitHub Action secret named AZURE_CREDENTIALS
-```
-
-For a staging resource group, create a separate principal and scope:
-
-```powershell
-az ad sp create-for-rbac `
-  --name fncast-ci-staging `
-  --role Contributor `
-  --scopes /subscriptions/<SUBSCRIPTION_ID>/resourceGroups/fncast-rg-staging `
-  --sdk-auth
-```
-
-Least-privilege tips:
-- Scope the role to the minimal target (resource group or even a single function app):
-  ```powershell
-  # Scope to a single Function App resource
-  az ad sp create-for-rbac `
-    --name fncast-ci-app `
-    --role Contributor `
-    --scopes /subscriptions/<SUBSCRIPTION_ID>/resourceGroups/fncast-rg/providers/Microsoft.Web/sites/fncast-dev-func `
-    --sdk-auth
-  ```
-- If you use `AZURE_FUNCTIONAPP_PUBLISH_PROFILE`, you can deploy without broad `Contributor` on the RG; the publish profile grants access only to the app.
-- Keep separate principals for dev/staging/prod and rotate credentials periodically.
+- `AZURE_CLIENT_ID`
+- `AZURE_CLIENT_SECRET`
+- `AZURE_TENANT_ID`
 
 ## 🎓 Lessons Learned
 
@@ -730,9 +491,9 @@ Track your progress in OneNote:
 
 ## 📦 Deliverables
 
--- ✅ `functionapp.zip` with inference logic
--- ✅ Bicep infrastructure templates
--- ✅ GitHub Actions pipeline
+- ✅ `functionapp.zip` with inference logic
+- ✅ Bicep infrastructure templates
+- ✅ GitLab CI/CD pipeline
 - ✅ Unit tests with coverage
 - ✅ README with setup and usage guide
 - ✅ Sample scripts for training and testing
@@ -820,23 +581,3 @@ curl -X POST "https://fncast-4654.azurewebsites.net/api/predict?code=<FUNCTION_K
 ```
 
 Tip: Staging environment (if configured) is available at `https://fncast-4654-staging.azurewebsites.net`.
-
-## 7. Operational: Dehydrate/Rehydrate
-
-- Dehydrate: stops the Function App and aggressively disables telemetry at the app level by clearing `APPINSIGHTS_INSTRUMENTATIONKEY` and `APPLICATIONINSIGHTS_CONNECTION_STRING`. It also disables Application Insights public ingestion and query access to minimize costs. It saves restart state in [azure-stopped-state.json](azure-stopped-state.json).
-
-```powershell
-pwsh ./scripts/dehydrate_azure.ps1
-# Optional maximal savings (delete AI; will be recreated on rehydrate):
-pwsh ./scripts/dehydrate_azure.ps1 -DeleteAppInsights
-```
-
-- Rehydrate: restores telemetry settings from App Insights (using names in [azure-config.json](azure-config.json)) and starts the Function App, then performs a health check.
-
-```powershell
-pwsh ./scripts/rehydrate_azure.ps1
-```
-
-Notes:
-- Ensure [azure-config.json](azure-config.json) has `resourceGroup`, `functionAppName`, and `appInsightsName` set for your environment.
-- App Insights retention charges may still apply even when telemetry is disabled at the app level; we also disable public ingestion/query access. For maximal savings, you can use `-DeleteAppInsights` to delete the component and let rehydrate recreate it.

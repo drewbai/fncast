@@ -1,0 +1,50 @@
+{
+  "info": {
+    "name": "FnCast (Python)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/HealthCheck",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "HealthCheck"]
+        }
+      }
+    },
+    {
+      "name": "Ingest (text/plain)",
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Content-Type", "value": "text/plain" } ],
+        "body": { "mode": "raw", "raw": "hello world" },
+        "url": {
+          "raw": "{{baseUrl}}/api/ingest",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "ingest"]
+        }
+      }
+    },
+    {
+      "name": "Ingest (application/json)",
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Content-Type", "value": "application/json" } ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"payload\": \"hello world\",\n  \"contentType\": \"text/plain\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/ingest",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "ingest"]
+        }
+      }
+    }
+  ],
+  "variable": [ { "key": "baseUrl", "value": "http://localhost:7071" } ]
+}

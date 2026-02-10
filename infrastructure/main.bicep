@@ -18,6 +18,7 @@ var appServicePlanName = '${projectName}-${environment}-plan'
 var appInsightsName = '${projectName}-${environment}-insights'
 var keyVaultName = '${projectName}-${environment}-kv'
 var modelContainerName = 'models'
+var queueName = 'fncast-events'
 
 // Storage Account
 resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
@@ -38,6 +39,17 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
 resource blobService 'Microsoft.Storage/storageAccounts/blobServices@2023-01-01' = {
   parent: storageAccount
   name: 'default'
+}
+
+// Queue Service and Queue
+resource queueService 'Microsoft.Storage/storageAccounts/queueServices@2023-01-01' = {
+  parent: storageAccount
+  name: 'default'
+}
+
+resource ingestQueue 'Microsoft.Storage/storageAccounts/queueServices/queues@2023-01-01' = {
+  parent: queueService
+  name: queueName
 }
 
 resource modelContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-01-01' = {
@@ -150,6 +162,15 @@ resource functionApp 'Microsoft.Web/sites@2023-01-01' = {
   }
 }
 
+// Event Grid Topic (for optional EventGrid ingestion)
+resource eventGridTopic 'Microsoft.EventGrid/topics@2022-06-15' = {
+  name: '${projectName}-${environment}-topic'
+  location: location
+  properties: {
+    inputSchema: 'EventGridSchema'
+  }
+}
+
 // Role assignments for Managed Identity
 // Storage Blob Data Contributor role
 resource storageRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
@@ -177,6 +198,8 @@ resource keyVaultRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04
 output functionAppName string = functionApp.name
 output functionAppUrl string = 'https://${functionApp.properties.defaultHostName}'
 output storageAccountName string = storageAccount.name
+output storageQueueName string = ingestQueue.name
 output keyVaultName string = keyVault.name
 output appInsightsName string = appInsights.name
 output functionAppPrincipalId string = functionApp.identity.principalId
+output eventGridTopicName string = eventGridTopic.name
