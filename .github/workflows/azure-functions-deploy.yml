@@ -37,7 +37,7 @@ jobs:
       - name: Create deployment package
         run: |
           echo "Creating deployment package..."
-          zip -r functionapp.zip . -x "*.git*" "*.vscode*" "tests/*" "scripts/*" "infrastructure/*" ".gitlab-ci.yml" ".github/*"
+          zip -r functionapp.zip . -x "*.git*" "*.vscode*" "tests/*" "scripts/*" "infrastructure/*" ".gitlab-ci.yml" ".github/*" ".venv/*" ".python_packages/*" "**/__pycache__/*"
 
       - name: Upload artifact for deployment
         uses: actions/upload-artifact@v4
