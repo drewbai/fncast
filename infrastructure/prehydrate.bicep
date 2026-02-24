@@ -4,7 +4,7 @@ targetScope = 'subscription'
 param projectName string = 'fncast'
 
 @description('Deployment environment (dev, staging, prod, etc.)')
-param environment string = 'develop'
+param environment string = 'dev'
 
 @description('Azure region for the resource group and nested deployment')
 param location string = 'westus2'
@@ -42,3 +42,4 @@ output functionAppUrl string = fncast.outputs.functionAppUrl
 output storageAccountName string = fncast.outputs.storageAccountName
 output eventGridTopicName string = fncast.outputs.eventGridTopicName
 output keyVaultName string = fncast.outputs.keyVaultName
+
