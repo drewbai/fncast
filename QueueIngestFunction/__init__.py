@@ -39,6 +39,8 @@ def main(msg: str):
             return
 
         result = _infer(payload_text)
-        logging.info(f"Queue message processed. Mode={os.environ.get('INFERENCE_MODE') or 'Echo'} Result={result}")
+        logging.info(
+            f"Queue message processed. Mode={os.environ.get('INFERENCE_MODE') or 'Echo'} Result={result}"
+        )
     except Exception:
         logging.exception("QueueIngestFunction failed")

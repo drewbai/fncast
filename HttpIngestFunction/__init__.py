@@ -43,7 +43,9 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
                 body = req.get_json()
             except ValueError:
                 return func.HttpResponse(
-                    json.dumps({"error": "Invalid JSON"}), status_code=400, mimetype="application/json"
+                    json.dumps({"error": "Invalid JSON"}),
+                    status_code=400,
+                    mimetype="application/json",
                 )
 
             # payload can be under 'payload'; fallback to raw body string if missing
@@ -57,7 +59,9 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
         if payload_text is None or payload_text == "":
             return func.HttpResponse(
-                json.dumps({"error": "Missing payload"}), status_code=400, mimetype="application/json"
+                json.dumps({"error": "Missing payload"}),
+                status_code=400,
+                mimetype="application/json",
             )
 
         result = _infer(payload_text)

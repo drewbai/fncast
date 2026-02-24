@@ -36,6 +36,8 @@ def main(event_grid_event):
             return
 
         result = _infer(payload_text)
-        logging.info(f"EventGrid event processed. Mode={os.environ.get('INFERENCE_MODE') or 'Echo'} Result={result}")
+        logging.info(
+            f"EventGrid event processed. Mode={os.environ.get('INFERENCE_MODE') or 'Echo'} Result={result}"
+        )
     except Exception:
         logging.exception("EventGridIngestFunction failed")
