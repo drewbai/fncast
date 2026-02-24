@@ -32,7 +32,7 @@ jobs:
         run: |
           echo "Installing dependencies..."
           pip install --upgrade pip
-          pip install -r requirements.txt --target=".python_packages/lib/site-packages"
+          pip install -r requirements.txt
 
       - name: Create deployment package
         run: |
@@ -120,6 +120,8 @@ jobs:
           app-name: ${{ secrets.AZURE_FUNCTION_APP_NAME }}
           package: functionapp.zip
           publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
+          scm-do-build-during-deployment: true
+          enable-oryx-build: true
 
   deploy-staging:
     runs-on: ubuntu-latest
@@ -156,3 +158,5 @@ jobs:
           app-name: ${{ secrets.AZURE_FUNCTION_APP_NAME }}-staging
           package: functionapp.zip
           publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE_STAGING }}
+          scm-do-build-during-deployment: true
+          enable-oryx-build: true
