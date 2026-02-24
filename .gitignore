@@ -78,6 +78,7 @@ ENV/
 
 # Azure
 .azure/
+.azurite/
 
 # OS
 .DS_Store

@@ -1,0 +1,55 @@
+name: Deploy Functions
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - '**/*.py'
+      - 'host.json'
+      - 'local.settings.json'
+      - 'requirements.txt'
+      - 'HealthCheckFunction/**'
+      - 'InferenceFunction/**'
+      - 'HttpIngestFunction/**'
+      - 'QueueIngestFunction/**'
+      - 'EventGridIngestFunction/**'
+
+jobs:
+  deploy:
+    runs-on: windows-latest
+    if: github.repository_owner == 'drewbai'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Azure Functions Core Tools
+        shell: pwsh
+        run: |
+          npm install -g azure-functions-core-tools@4 --unsafe-perm true
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Build package
+        shell: pwsh
+        run: |
+          func pack --build-native-deps --python
+
+      - name: Deploy to Azure Function App
+        shell: pwsh
+        env:
+          AZURE_FUNCTIONAPP_NAME: ${{ vars.AZURE_FUNCTIONAPP_NAME }}
+          AZURE_FUNCTIONAPP_PUBLISH_PROFILE: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
+        run: |
+          if (-not $env:AZURE_FUNCTIONAPP_NAME) { throw "Missing repo variable AZURE_FUNCTIONAPP_NAME" }
+          if (-not $env:AZURE_FUNCTIONAPP_PUBLISH_PROFILE) { throw "Missing secret AZURE_FUNCTIONAPP_PUBLISH_PROFILE" }
+          $profilePath = "$env:RUNNER_TEMP\publishProfile.xml"
+          Set-Content -Path $profilePath -Value $env:AZURE_FUNCTIONAPP_PUBLISH_PROFILE
+          func azure functionapp publish $env:AZURE_FUNCTIONAPP_NAME --publish-profile-path $profilePath

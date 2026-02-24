@@ -4,11 +4,11 @@ on:
   push:
     branches:
       - main
-      - develop
+      - dev
   pull_request:
     branches:
       - main
-      - develop
+      - dev
   workflow_dispatch:
 
 
@@ -32,12 +32,12 @@ jobs:
         run: |
           echo "Installing dependencies..."
           pip install --upgrade pip
-          pip install -r requirements.txt --target=".python_packages/lib/site-packages"
+          pip install -r requirements.txt
 
       - name: Create deployment package
         run: |
           echo "Creating deployment package..."
-          zip -r functionapp.zip . -x "*.git*" "*.vscode*" "tests/*" "scripts/*" "infrastructure/*" ".gitlab-ci.yml" ".github/*"
+          zip -r functionapp.zip . -x "*.git*" "*.vscode*" "tests/*" "scripts/*" "infrastructure/*" ".gitlab-ci.yml" ".github/*" ".venv/*" ".python_packages/*" "**/__pycache__/*"
 
       - name: Upload artifact for deployment
         uses: actions/upload-artifact@v4
@@ -100,6 +100,15 @@ jobs:
         with:
           name: functionapp
 
+      - name: Validate Azure credentials JSON
+        env:
+          AZ_CREDS: ${{ secrets.AZURE_CREDENTIALS }}
+        run: |
+          echo "Validating AZURE_CREDENTIALS JSON..."
+          python -c "import json, os, sys; data=os.environ.get('AZ_CREDS');
+          json.loads(data); print('AZURE_CREDENTIALS is valid JSON')" || {
+            echo 'Invalid AZURE_CREDENTIALS payload'; exit 1; }
+
       - name: Login to Azure
         uses: azure/login@v2
         with:
@@ -111,11 +120,13 @@ jobs:
           app-name: ${{ secrets.AZURE_FUNCTION_APP_NAME }}
           package: functionapp.zip
           publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
+          scm-do-build-during-deployment: true
+          enable-oryx-build: true
 
   deploy-staging:
     runs-on: ubuntu-latest
     needs: [build, test]
-    if: github.ref == 'refs/heads/develop' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    if: github.ref == 'refs/heads/dev' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     env:
       AZURE_FUNCTION_APP_NAME: ${{ secrets.AZURE_FUNCTION_APP_NAME }}
     environment:
@@ -126,6 +137,15 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: functionapp
+
+      - name: Validate Azure credentials JSON
+        env:
+          AZ_CREDS: ${{ secrets.AZURE_CREDENTIALS }}
+        run: |
+          echo "Validating AZURE_CREDENTIALS JSON..."
+          python -c "import json, os, sys; data=os.environ.get('AZ_CREDS');
+          json.loads(data); print('AZURE_CREDENTIALS is valid JSON')" || {
+            echo 'Invalid AZURE_CREDENTIALS payload'; exit 1; }
 
       - name: Login to Azure
         uses: azure/login@v2
@@ -138,3 +158,5 @@ jobs:
           app-name: ${{ secrets.AZURE_FUNCTION_APP_NAME }}-staging
           package: functionapp.zip
           publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE_STAGING }}
+          scm-do-build-during-deployment: true
+          enable-oryx-build: true

@@ -37,6 +37,8 @@ select = [
 # Ignore specific rules
 ignore = [
     "E501",  # line too long (handled by formatter)
+    "N999",  # Azure Functions module folders use PascalCase
+    "N806",  # allow uppercase variables (e.g., X_train)
 ]
 
 [tool.ruff.lint.isort]

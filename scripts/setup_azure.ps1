@@ -16,7 +16,7 @@ param(
     [string]$ResourceGroupName = "rg-fncast",
     
     [Parameter(Mandatory=$false)]
-    [string]$Location = "eastus",
+    [string]$Location = "westus2",
     
     [Parameter(Mandatory=$false)]
     [string]$FunctionAppName = "fncast-$(Get-Random -Minimum 1000 -Maximum 9999)",
@@ -25,7 +25,10 @@ param(
     [string]$StorageAccountName = "stfncast$(Get-Random -Minimum 1000 -Maximum 9999)",
     
     [Parameter(Mandatory=$false)]
-    [string]$AppInsightsName = "ai-fncast"
+    [string]$AppInsightsName = "ai-fncast",
+
+    [Parameter(Mandatory=$false)]
+    [string]$SubscriptionId = "a3ffe731-0f80-47fa-ad62-50ea1cab3605"
 )
 
 # Login to Azure (if not already logged in)
@@ -34,6 +37,12 @@ $account = az account show 2>$null | ConvertFrom-Json
 if (-not $account) {
     Write-Host "Not logged in. Please log in to Azure..." -ForegroundColor Yellow
     az login
+    $account = az account show | ConvertFrom-Json
+}
+
+if ($SubscriptionId -and $account.id -ne $SubscriptionId) {
+    Write-Host "Switching to subscription $SubscriptionId" -ForegroundColor Cyan
+    az account set --subscription $SubscriptionId | Out-Null
     $account = az account show | ConvertFrom-Json
 }
 

@@ -1,0 +1,19 @@
+@baseUrl = http://localhost:7071
+
+### Health
+GET {{baseUrl}}/api/HealthCheck
+
+### Ingest (text/plain)
+POST {{baseUrl}}/api/ingest
+Content-Type: text/plain
+
+hello world
+
+### Ingest (application/json)
+POST {{baseUrl}}/api/ingest
+Content-Type: application/json
+
+{
+  "payload": "hello world",
+  "contentType": "text/plain"
+}

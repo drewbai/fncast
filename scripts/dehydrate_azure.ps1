@@ -15,6 +15,12 @@ param(
     [string]$FunctionAppName = "fncast-4654",
     
     [Parameter(Mandatory=$false)]
+    [string]$AppInsightsName = "ai-fncast",
+    
+    [Parameter(Mandatory=$false)]
+    [switch]$DeleteAppInsights,
+    
+    [Parameter(Mandatory=$false)]
     [switch]$KeepAppInsights
 )
 
@@ -33,6 +39,22 @@ if (-not $account) {
 
 Write-Host "✓ Using subscription: $($account.name)`n" -ForegroundColor Green
 
+# Load azure-config.json if present to override defaults
+$cfgPath = "azure-config.json"
+if (Test-Path $cfgPath) {
+    Write-Host "Loading configuration from azure-config.json..." -ForegroundColor Cyan
+    try {
+        $cfg = Get-Content $cfgPath | ConvertFrom-Json
+        if ($cfg.resourceGroup) { $ResourceGroupName = $cfg.resourceGroup }
+        if ($cfg.functionAppName) { $FunctionAppName = $cfg.functionAppName }
+        if ($cfg.appInsightsName) { $AppInsightsName = $cfg.appInsightsName }
+        $DefaultLocation = $cfg.location
+        Write-Host "✓ Config loaded: RG=$ResourceGroupName, FA=$FunctionAppName, AI=$AppInsightsName" -ForegroundColor Green
+    } catch {
+        Write-Host "⚠ Failed to parse azure-config.json; using defaults" -ForegroundColor Yellow
+    }
+}
+
 # Stop Function App
 Write-Host "Stopping Function App '$FunctionAppName'..." -ForegroundColor Cyan
 try {
@@ -42,11 +64,77 @@ try {
     Write-Host "✗ Failed to stop Function App: $_" -ForegroundColor Red
 }
 
-# Check if App Insights should be disabled (note: can't fully stop, but can disable ingestion)
-if (-not $KeepAppInsights) {
-    Write-Host "`nDisabling Application Insights ingestion..." -ForegroundColor Cyan
-    Write-Host "⚠ Note: Application Insights still charges for data retention" -ForegroundColor Yellow
-    Write-Host "  To fully save costs, consider deleting App Insights temporarily" -ForegroundColor Yellow
+# Aggressively dehydrate telemetry by clearing Function App telemetry settings
+Write-Host "`nChecking Function App telemetry settings..." -ForegroundColor Cyan
+try {
+    $appSettings = az functionapp config appsettings list --name $FunctionAppName --resource-group $ResourceGroupName | ConvertFrom-Json
+    $aiKeySetting = $appSettings | Where-Object { $_.name -eq "APPINSIGHTS_INSTRUMENTATIONKEY" }
+    $aiConnSetting = $appSettings | Where-Object { $_.name -eq "APPLICATIONINSIGHTS_CONNECTION_STRING" }
+
+    $hadInstrumentationKey = ($aiKeySetting -and $aiKeySetting.value -and $aiKeySetting.value -ne "")
+    $hadConnectionString = ($aiConnSetting -and $aiConnSetting.value -and $aiConnSetting.value -ne "")
+
+    $settingsToClear = @()
+    if ($hadInstrumentationKey) { $settingsToClear += "APPINSIGHTS_INSTRUMENTATIONKEY=" }
+    if ($hadConnectionString) { $settingsToClear += "APPLICATIONINSIGHTS_CONNECTION_STRING=" }
+
+    if ($settingsToClear.Count -gt 0) {
+        Write-Host "Clearing telemetry settings on Function App..." -ForegroundColor Cyan
+        az functionapp config appsettings set --name $FunctionAppName --resource-group $ResourceGroupName --settings $settingsToClear
+        Write-Host "✓ Telemetry disabled at app level" -ForegroundColor Green
+    } else {
+        Write-Host "No telemetry settings found to clear" -ForegroundColor Yellow
+    }
+} catch {
+    Write-Host "⚠ Failed to inspect/clear telemetry settings: $_" -ForegroundColor Yellow
+}
+
+# Disable App Insights public ingestion/query access (aggressive dehydration)
+if (-not $KeepAppInsights -and $AppInsightsName) {
+    Write-Host "`nDisabling Application Insights public ingestion/query access..." -ForegroundColor Cyan
+    try {
+        # Record current status
+        $aiBefore = az monitor app-insights component show --app $AppInsightsName --resource-group $ResourceGroupName | ConvertFrom-Json
+        $ingBefore = $aiBefore.ingestionPublicNetworkAccess
+        $qryBefore = $aiBefore.queryPublicNetworkAccess
+        
+        az monitor app-insights component update --app $AppInsightsName --resource-group $ResourceGroupName --ingestion-access Disabled --query-access Disabled | Out-Null
+        Write-Host "✓ Application Insights public access disabled" -ForegroundColor Green
+        $aiAccess = @{ before = @{ ingestion = $ingBefore; query = $qryBefore }; after = @{ ingestion = 'Disabled'; query = 'Disabled' } }
+    } catch {
+        Write-Host "⚠ Failed to disable App Insights access: $_" -ForegroundColor Yellow
+        $aiAccess = @{ error = $_.ToString() }
+    }
+}
+
+# Optionally delete App Insights entirely for maximal savings
+if ($DeleteAppInsights -and $AppInsightsName) {
+    Write-Host "`nDeleting Application Insights '$AppInsightsName' for maximal cost savings..." -ForegroundColor Cyan
+    try {
+        # Capture properties for potential recreation
+        $aiProps = az monitor app-insights component show --app $AppInsightsName --resource-group $ResourceGroupName | ConvertFrom-Json
+        $aiSnapshot = @{
+            name = $AppInsightsName
+            location = $aiProps.location
+            applicationType = ($aiProps.applicationType ?? 'web')
+            workspaceResourceId = $aiProps.workspaceResourceId
+        }
+        az monitor app-insights component delete --app $AppInsightsName --resource-group $ResourceGroupName
+        Write-Host "✓ Application Insights deleted" -ForegroundColor Green
+        $aiDeleted = $true
+    } catch {
+        Write-Host "✗ Failed to delete Application Insights: $_" -ForegroundColor Red
+        # If component already deleted, keep a default snapshot from config for idempotent recreate
+        if (-not $aiSnapshot) {
+            $aiSnapshot = @{
+                name = $AppInsightsName
+                location = ($DefaultLocation ? $DefaultLocation : 'westus2')
+                applicationType = 'web'
+                workspaceResourceId = $null
+            }
+        }
+        $aiDeleted = $true
+    }
 }
 
 # Display cost-saving summary
@@ -68,6 +156,11 @@ Write-Host "`nTo restart resources, run: .\scripts\rehydrate_azure.ps1`n" -Foreg
 $state = @{
     resourceGroup = $ResourceGroupName
     functionAppName = $FunctionAppName
+    appInsightsName = $AppInsightsName
+    cleared = @{ instrumentationKey = $hadInstrumentationKey; connectionString = $hadConnectionString }
+    aiAccess = $aiAccess
+    aiDeleted = $aiDeleted
+    aiSnapshot = $aiSnapshot
     stoppedAt = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
 }
 
