@@ -130,9 +130,10 @@ Task: "pip install (functions)"
 ${env:azureFunctions_pythonVenv}\Scripts\python -m pip install -r requirements.txt
 ```
 
-2. Provision Azure resources (resource group, storage, App Insights, function app, service principal):
+2. Provision Azure resources (resource group, storage, App Insights, function app, service principal). The script now accepts `-SubscriptionId` so you can pin deployments to `a3ffe731-0f80-47fa-ad62-50ea1cab3605` (or any other subscription):
 
-pwsh ./scripts/setup_azure.ps1
+```powershell
+pwsh ./scripts/setup_azure.ps1 -SubscriptionId a3ffe731-0f80-47fa-ad62-50ea1cab3605
 ```
 
 3. Train and upload a sample model:
@@ -571,7 +572,7 @@ curl -X POST http://localhost:7071/api/predict \
 az login
 
 # Create resource group
-az group create --name fncast-rg --location eastus
+az group create --name fncast-rg --location westus2
 
 # Deploy Bicep template
 az deployment group create \
@@ -834,7 +835,7 @@ pwsh ./scripts/dehydrate_azure.ps1 -DeleteAppInsights
 - Rehydrate: restores telemetry settings from App Insights (using names in [azure-config.json](azure-config.json)) and starts the Function App, then performs a health check.
 
 ```powershell
-pwsh ./scripts/rehydrate_azure.ps1
+pwsh ./scripts/rehydrate_azure.ps1 -SubscriptionId a3ffe731-0f80-47fa-ad62-50ea1cab3605
 ```
 
 Notes:

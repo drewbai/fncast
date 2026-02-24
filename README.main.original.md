@@ -369,7 +369,7 @@ curl -X POST http://localhost:7071/api/predict \
 az login
 
 # Create resource group
-az group create --name fncast-rg --location eastus
+az group create --name fncast-rg --location westus2
 
 # Deploy Bicep template
 az deployment group create \

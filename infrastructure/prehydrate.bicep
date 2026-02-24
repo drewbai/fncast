@@ -7,7 +7,7 @@ param projectName string = 'fncast'
 param environment string = 'develop'
 
 @description('Azure region for the resource group and nested deployment')
-param location string = 'eastus'
+param location string = 'westus2'
 
 @description('Optional tags applied to the resource group')
 param tags object = {

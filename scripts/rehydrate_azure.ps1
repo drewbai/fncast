@@ -15,7 +15,10 @@ param(
     [string]$FunctionAppName = "fncast-4654",
     
     [Parameter(Mandatory=$false)]
-    [string]$AppInsightsName = "ai-fncast"
+    [string]$AppInsightsName = "ai-fncast",
+
+    [Parameter(Mandatory=$false)]
+    [string]$SubscriptionId = "a3ffe731-0f80-47fa-ad62-50ea1cab3605"
 )
 
 Write-Host "======================================" -ForegroundColor Yellow
@@ -61,6 +64,12 @@ if (-not $account) {
     $account = az account show | ConvertFrom-Json
 }
 
+if ($SubscriptionId -and $account.id -ne $SubscriptionId) {
+    Write-Host "Switching to subscription $SubscriptionId" -ForegroundColor Cyan
+    az account set --subscription $SubscriptionId | Out-Null
+    $account = az account show | ConvertFrom-Json
+}
+
 Write-Host "✓ Using subscription: $($account.name)`n" -ForegroundColor Green
 
 # Ensure App Insights exists (recreate if deleted) and re-enable ingestion/query
@@ -75,7 +84,7 @@ if ($AppInsightsName) {
     if (-not $aiExists) {
         Write-Host "App Insights not found; recreating '$AppInsightsName'..." -ForegroundColor Cyan
         try {
-            $location = if ($aiSnapshot -and $aiSnapshot.location) { $aiSnapshot.location } elseif ($DefaultLocation) { $DefaultLocation } else { 'eastus' }
+            $location = if ($aiSnapshot -and $aiSnapshot.location) { $aiSnapshot.location } elseif ($DefaultLocation) { $DefaultLocation } else { 'westus2' }
             $applicationType = if ($aiSnapshot -and $aiSnapshot.applicationType) { $aiSnapshot.applicationType } else { 'web' }
             $workspaceId = if ($aiSnapshot) { $aiSnapshot.workspaceResourceId } else { $null }
             $createCmd = @("az","monitor","app-insights","component","create","--app",$AppInsightsName,"--location",$location,"--resource-group",$ResourceGroupName,"--application-type",$applicationType,"--kind","web")

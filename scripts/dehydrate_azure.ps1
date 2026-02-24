@@ -128,7 +128,7 @@ if ($DeleteAppInsights -and $AppInsightsName) {
         if (-not $aiSnapshot) {
             $aiSnapshot = @{
                 name = $AppInsightsName
-                location = ($DefaultLocation ? $DefaultLocation : 'eastus')
+                location = ($DefaultLocation ? $DefaultLocation : 'westus2')
                 applicationType = 'web'
                 workspaceResourceId = $null
             }
