@@ -841,3 +841,23 @@ pwsh ./scripts/rehydrate_azure.ps1 -SubscriptionId a3ffe731-0f80-47fa-ad62-50ea1
 Notes:
 - Ensure [azure-config.json](azure-config.json) has `resourceGroup`, `functionAppName`, and `appInsightsName` set for your environment.
 - App Insights retention charges may still apply even when telemetry is disabled at the app level; we also disable public ingestion/query access. For maximal savings, you can use `-DeleteAppInsights` to delete the component and let rehydrate recreate it.
+
+## 8. Hybrid CI/CD (GitHub Actions + Azure DevOps)
+
+**CI authority (GitHub Actions):**
+- Build, lint, test, and package the Function App.
+- Publish a deployable artifact named `functionapp.zip` as a GitHub Actions artifact (for example, `functionapp`).
+
+**CD authority (Azure DevOps Pipelines):**
+- Download the GitHub Actions artifact using the GitHub API.
+- Deploy the artifact to Azure Functions using an Azure DevOps service connection (RBAC; no publish profiles).
+- Use Azure DevOps environments for approvals and release governance.
+
+**Artifact flow:**
+1) GitHub Actions produces `functionapp.zip` and uploads it as an artifact.
+2) Azure DevOps pipeline `azure-pipelines.yml` downloads the latest successful artifact.
+3) Azure DevOps deploys the zip to the target Function App.
+
+**Why hybrid:**
+- Keeps CI logic centralized in GitHub Actions (no duplication).
+- Uses Azure DevOps release governance (approvals, audit, environment checks) in line with AZ-400 best practices.
