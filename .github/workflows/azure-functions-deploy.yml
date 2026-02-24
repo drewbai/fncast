@@ -101,17 +101,13 @@ jobs:
           name: functionapp
 
       - name: Validate Azure credentials JSON
+        env:
+          AZ_CREDS: ${{ secrets.AZURE_CREDENTIALS }}
         run: |
           echo "Validating AZURE_CREDENTIALS JSON..."
-          echo "${{ secrets.AZURE_CREDENTIALS }}" | python - <<'PY'
-import sys, json
-try:
-    json.load(sys.stdin)
-    print("AZURE_CREDENTIALS is valid JSON")
-except Exception as e:
-    print("Invalid AZURE_CREDENTIALS:", e)
-    sys.exit(1)
-PY
+          python -c "import json, os, sys; data=os.environ.get('AZ_CREDS');
+          json.loads(data); print('AZURE_CREDENTIALS is valid JSON')" || {
+            echo 'Invalid AZURE_CREDENTIALS payload'; exit 1; }
 
       - name: Login to Azure
         uses: azure/login@v2
@@ -141,17 +137,13 @@ PY
           name: functionapp
 
       - name: Validate Azure credentials JSON
+        env:
+          AZ_CREDS: ${{ secrets.AZURE_CREDENTIALS }}
         run: |
           echo "Validating AZURE_CREDENTIALS JSON..."
-          echo "${{ secrets.AZURE_CREDENTIALS }}" | python - <<'PY'
-import sys, json
-try:
-    json.load(sys.stdin)
-    print("AZURE_CREDENTIALS is valid JSON")
-except Exception as e:
-    print("Invalid AZURE_CREDENTIALS:", e)
-    sys.exit(1)
-PY
+          python -c "import json, os, sys; data=os.environ.get('AZ_CREDS');
+          json.loads(data); print('AZURE_CREDENTIALS is valid JSON')" || {
+            echo 'Invalid AZURE_CREDENTIALS payload'; exit 1; }
 
       - name: Login to Azure
         uses: azure/login@v2
