@@ -21,6 +21,18 @@ parameters:
     displayName: GitHub branch to deploy from
     type: string
     default: dev
+  - name: serviceConnectionDev
+    displayName: Azure service connection (dev)
+    type: string
+    default: fncast-dev-sc
+  - name: serviceConnectionStaging
+    displayName: Azure service connection (staging)
+    type: string
+    default: fncast-dev-sc
+  - name: serviceConnectionProd
+    displayName: Azure service connection (prod)
+    type: string
+    default: fncast-dev-sc
 
 variables:
   # GitHub source settings for artifact retrieval
@@ -135,7 +147,7 @@ stages:
                 - task: AzureFunctionApp@2
                   displayName: Deploy Function App
                   inputs:
-                    azureSubscription: $(AZURE_SERVICE_CONNECTION)
+                    azureSubscription: ${{ parameters.serviceConnectionDev }}
                     appType: functionAppLinux
                     appName: $(FUNCTION_APP_NAME)
                     package: $(Pipeline.Workspace)/package/functionapp.zip
@@ -165,7 +177,7 @@ stages:
                 - task: AzureFunctionApp@2
                   displayName: Deploy Function App
                   inputs:
-                    azureSubscription: $(AZURE_SERVICE_CONNECTION)
+                    azureSubscription: ${{ parameters.serviceConnectionStaging }}
                     appType: functionAppLinux
                     appName: $(FUNCTION_APP_NAME)
                     package: $(Pipeline.Workspace)/package/functionapp.zip
@@ -195,7 +207,7 @@ stages:
                 - task: AzureFunctionApp@2
                   displayName: Deploy Function App
                   inputs:
-                    azureSubscription: $(AZURE_SERVICE_CONNECTION)
+                    azureSubscription: ${{ parameters.serviceConnectionProd }}
                     appType: functionAppLinux
                     appName: $(FUNCTION_APP_NAME)
                     package: $(Pipeline.Workspace)/package/functionapp.zip
