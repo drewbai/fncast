@@ -5,9 +5,12 @@
 trigger: none
 pr: none
 
+pool:
+  vmImage: 'ubuntu-latest'
+
 parameters:
-  - name: environment
-    displayName: Deploy environment
+  - name: targetEnvironment
+    displayName: Deploy up to environment
     type: string
     default: dev
     values:
@@ -31,88 +34,103 @@ variables:
   # Artifact name produced by GitHub Actions
   - name: GITHUB_ARTIFACT_NAME
     value: functionapp
-
-  # Environment-specific variable groups
-  # Each group should define:
-  # - AZURE_SERVICE_CONNECTION
-  # - FUNCTION_APP_NAME
-  - ${{ if eq(parameters.environment, 'dev') }}:
-    - group: fncast-dev
-  - ${{ if eq(parameters.environment, 'staging') }}:
-    - group: fncast-staging
-  - ${{ if eq(parameters.environment, 'prod') }}:
-    - group: fncast-prod
+  - name: PIPELINE_ARTIFACT_NAME
+    value: functionapp-package
 
 stages:
-  - stage: Deploy
-    displayName: Deploy to ${{ parameters.environment }}
-    # Hybrid model: GitHub Actions handles CI, Azure DevOps handles release gates.
-    # This aligns with enterprise governance (approvals, checks, audit) while
-    # avoiding duplicated CI logic (AZ-400 recommended separation of concerns).
+  - stage: Package
+    displayName: Package from GitHub Actions
     jobs:
-      - deployment: DeployFunction
-        displayName: Azure Functions release
-        environment: ${{ parameters.environment }}
+      - job: Package
+        displayName: Download and publish package
+        steps:
+          - checkout: none
+
+          - task: PowerShell@2
+            displayName: Download GitHub Actions artifact
+            inputs:
+              targetType: inline
+              pwsh: true
+              script: |
+                $ErrorActionPreference = 'Stop'
+                $owner = "$(GITHUB_OWNER)"
+                $repo = "$(GITHUB_REPO)"
+                $workflow = "$(GITHUB_WORKFLOW)"
+                $branch = "${{ parameters.branch }}"
+                $artifactName = "$(GITHUB_ARTIFACT_NAME)"
+
+                if (-not $env:GITHUB_TOKEN) {
+                  throw "GITHUB_TOKEN is required (GitHub PAT with actions:read)."
+                }
+
+                $headers = @{
+                  Authorization = "Bearer $env:GITHUB_TOKEN"
+                  Accept = "application/vnd.github+json"
+                  "X-GitHub-Api-Version" = "2022-11-28"
+                }
+
+                $runsUrl = "https://api.github.com/repos/$owner/$repo/actions/workflows/$workflow/runs?branch=$branch&status=success&per_page=1"
+                $runs = Invoke-RestMethod -Uri $runsUrl -Headers $headers
+                $runId = $runs.workflow_runs[0].id
+                if (-not $runId) {
+                  throw "No successful runs found for workflow '$workflow' on branch '$branch'."
+                }
+
+                $artifactsUrl = "https://api.github.com/repos/$owner/$repo/actions/runs/$runId/artifacts"
+                $artifacts = Invoke-RestMethod -Uri $artifactsUrl -Headers $headers
+                $artifact = $artifacts.artifacts | Where-Object { $_.name -eq $artifactName } | Select-Object -First 1
+                if (-not $artifact) {
+                  throw "Artifact '$artifactName' not found in run $runId."
+                }
+
+                $zipPath = "$(Pipeline.Workspace)/artifact.zip"
+                Invoke-WebRequest -Uri $artifact.archive_download_url -Headers $headers -OutFile $zipPath
+
+                $dest = "$(Pipeline.Workspace)/gh-artifacts"
+                if (Test-Path $dest) { Remove-Item -Recurse -Force $dest }
+                New-Item -ItemType Directory -Path $dest | Out-Null
+                Expand-Archive -Path $zipPath -DestinationPath $dest
+
+                $package = Join-Path $dest "functionapp.zip"
+                if (-not (Test-Path $package)) {
+                  throw "functionapp.zip not found in artifact '$artifactName'."
+                }
+
+                $packageDir = "$(Pipeline.Workspace)/package"
+                if (Test-Path $packageDir) { Remove-Item -Recurse -Force $packageDir }
+                New-Item -ItemType Directory -Path $packageDir | Out-Null
+                Copy-Item -Path $package -Destination (Join-Path $packageDir "functionapp.zip") -Force
+            env:
+              # Store a PAT with actions:read scope in a secure variable.
+              GITHUB_TOKEN: $(GITHUB_TOKEN)
+
+          - task: PublishPipelineArtifact@1
+            displayName: Publish pipeline artifact
+            inputs:
+              targetPath: $(Pipeline.Workspace)/package
+              artifact: $(PIPELINE_ARTIFACT_NAME)
+
+  - stage: DeployDev
+    displayName: Deploy to dev
+    dependsOn: Package
+    condition: and(succeeded(), or(eq('${{ parameters.targetEnvironment }}','dev'), eq('${{ parameters.targetEnvironment }}','staging'), eq('${{ parameters.targetEnvironment }}','prod')))
+    variables:
+      - group: fncast-dev
+    jobs:
+      - deployment: DeployDev
+        displayName: Azure Functions dev release
+        environment: dev
         strategy:
           runOnce:
             deploy:
               steps:
                 - checkout: none
 
-                - task: PowerShell@2
-                  displayName: Download GitHub Actions artifact
+                - task: DownloadPipelineArtifact@2
+                  displayName: Download pipeline artifact
                   inputs:
-                    targetType: inline
-                    pwsh: true
-                    script: |
-                      $ErrorActionPreference = 'Stop'
-                      $owner = "$(GITHUB_OWNER)"
-                      $repo = "$(GITHUB_REPO)"
-                      $workflow = "$(GITHUB_WORKFLOW)"
-                      $branch = "${{ parameters.branch }}"
-                      $artifactName = "$(GITHUB_ARTIFACT_NAME)"
-
-                      if (-not $env:GITHUB_TOKEN) {
-                        throw "GITHUB_TOKEN is required (GitHub PAT with actions:read)."
-                      }
-
-                      $headers = @{
-                        Authorization = "Bearer $env:GITHUB_TOKEN"
-                        Accept = "application/vnd.github+json"
-                        "X-GitHub-Api-Version" = "2022-11-28"
-                      }
-
-                      $runsUrl = "https://api.github.com/repos/$owner/$repo/actions/workflows/$workflow/runs?branch=$branch&status=success&per_page=1"
-                      $runs = Invoke-RestMethod -Uri $runsUrl -Headers $headers
-                      $runId = $runs.workflow_runs[0].id
-                      if (-not $runId) {
-                        throw "No successful runs found for workflow '$workflow' on branch '$branch'."
-                      }
-
-                      $artifactsUrl = "https://api.github.com/repos/$owner/$repo/actions/runs/$runId/artifacts"
-                      $artifacts = Invoke-RestMethod -Uri $artifactsUrl -Headers $headers
-                      $artifact = $artifacts.artifacts | Where-Object { $_.name -eq $artifactName } | Select-Object -First 1
-                      if (-not $artifact) {
-                        throw "Artifact '$artifactName' not found in run $runId."
-                      }
-
-                      $zipPath = "$(Pipeline.Workspace)/artifact.zip"
-                      Invoke-WebRequest -Uri $artifact.archive_download_url -Headers $headers -OutFile $zipPath
-
-                      $dest = "$(Pipeline.Workspace)/gh-artifacts"
-                      if (Test-Path $dest) { Remove-Item -Recurse -Force $dest }
-                      New-Item -ItemType Directory -Path $dest | Out-Null
-                      Expand-Archive -Path $zipPath -DestinationPath $dest
-
-                      $package = Join-Path $dest "functionapp.zip"
-                      if (-not (Test-Path $package)) {
-                        throw "functionapp.zip not found in artifact '$artifactName'."
-                      }
-
-                      Write-Host "##vso[task.setvariable variable=PACKAGE_PATH]$package"
-                  env:
-                    # Store a PAT with actions:read scope in a secure variable.
-                    GITHUB_TOKEN: $(GITHUB_TOKEN)
+                    artifact: $(PIPELINE_ARTIFACT_NAME)
+                    path: $(Pipeline.Workspace)/package
 
                 - task: AzureFunctionApp@2
                   displayName: Deploy Function App
@@ -120,4 +138,64 @@ stages:
                     azureSubscription: $(AZURE_SERVICE_CONNECTION)
                     appType: functionAppLinux
                     appName: $(FUNCTION_APP_NAME)
-                    package: $(PACKAGE_PATH)
+                    package: $(Pipeline.Workspace)/package/functionapp.zip
+
+  - stage: DeployStaging
+    displayName: Promote to staging
+    dependsOn: DeployDev
+    condition: and(succeeded(), or(eq('${{ parameters.targetEnvironment }}','staging'), eq('${{ parameters.targetEnvironment }}','prod')))
+    variables:
+      - group: fncast-staging
+    jobs:
+      - deployment: DeployStaging
+        displayName: Azure Functions staging release
+        environment: staging
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: none
+
+                - task: DownloadPipelineArtifact@2
+                  displayName: Download pipeline artifact
+                  inputs:
+                    artifact: $(PIPELINE_ARTIFACT_NAME)
+                    path: $(Pipeline.Workspace)/package
+
+                - task: AzureFunctionApp@2
+                  displayName: Deploy Function App
+                  inputs:
+                    azureSubscription: $(AZURE_SERVICE_CONNECTION)
+                    appType: functionAppLinux
+                    appName: $(FUNCTION_APP_NAME)
+                    package: $(Pipeline.Workspace)/package/functionapp.zip
+
+  - stage: DeployProd
+    displayName: Promote to prod
+    dependsOn: DeployStaging
+    condition: and(succeeded(), eq('${{ parameters.targetEnvironment }}','prod'))
+    variables:
+      - group: fncast-prod
+    jobs:
+      - deployment: DeployProd
+        displayName: Azure Functions prod release
+        environment: prod
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: none
+
+                - task: DownloadPipelineArtifact@2
+                  displayName: Download pipeline artifact
+                  inputs:
+                    artifact: $(PIPELINE_ARTIFACT_NAME)
+                    path: $(Pipeline.Workspace)/package
+
+                - task: AzureFunctionApp@2
+                  displayName: Deploy Function App
+                  inputs:
+                    azureSubscription: $(AZURE_SERVICE_CONNECTION)
+                    appType: functionAppLinux
+                    appName: $(FUNCTION_APP_NAME)
+                    package: $(Pipeline.Workspace)/package/functionapp.zip
