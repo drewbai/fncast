@@ -42,7 +42,7 @@ variables:
     value: fncast
   # The GitHub Actions workflow that publishes the artifact
   - name: GITHUB_WORKFLOW
-    value: ci.yml
+    value: azure-functions-deploy.yml
   # Artifact name produced by GitHub Actions
   - name: GITHUB_ARTIFACT_NAME
     value: functionapp
