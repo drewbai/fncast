@@ -151,6 +151,7 @@ stages:
                     appType: functionAppLinux
                     appName: $(FUNCTION_APP_NAME)
                     package: $(Pipeline.Workspace)/package/functionapp.zip
+                    syncTrigger: false
 
   - stage: DeployStaging
     displayName: Promote to staging
@@ -181,6 +182,7 @@ stages:
                     appType: functionAppLinux
                     appName: $(FUNCTION_APP_NAME)
                     package: $(Pipeline.Workspace)/package/functionapp.zip
+                    syncTrigger: false
 
   - stage: DeployProd
     displayName: Promote to prod
@@ -211,3 +213,4 @@ stages:
                     appType: functionAppLinux
                     appName: $(FUNCTION_APP_NAME)
                     package: $(Pipeline.Workspace)/package/functionapp.zip
+                    syncTrigger: false
