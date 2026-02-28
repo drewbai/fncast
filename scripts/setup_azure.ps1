@@ -83,7 +83,7 @@ az functionapp create `
     --storage-account $StorageAccountName `
     --consumption-plan-location $Location `
     --runtime python `
-    --runtime-version 3.12 `
+    --runtime-version 3.11 `
     --functions-version 4 `
     --os-type Linux `
     --app-insights $AppInsightsName

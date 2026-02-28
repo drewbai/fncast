@@ -92,19 +92,21 @@ resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
 resource appServicePlan 'Microsoft.Web/serverfarms@2023-01-01' = {
   name: appServicePlanName
   location: location
-  kind: 'functionapp'
+  kind: 'linux'
   sku: {
     name: functionAppSku
     tier: 'Dynamic'
   }
-  properties: {}
+  properties: {
+    reserved: true
+  }
 }
 
 // Function App
 resource functionApp 'Microsoft.Web/sites@2023-01-01' = {
   name: functionAppName
   location: location
-  kind: 'functionapp'
+  kind: 'functionapp,linux'
   identity: {
     type: 'SystemAssigned'
   }
@@ -158,7 +160,7 @@ resource functionApp 'Microsoft.Web/sites@2023-01-01' = {
           value: 'model.pkl'
         }
       ]
-      pythonVersion: '3.12'
+      linuxFxVersion: 'Python|3.11'
     }
   }
 }
@@ -167,7 +169,7 @@ resource functionApp 'Microsoft.Web/sites@2023-01-01' = {
 resource functionAppStaging 'Microsoft.Web/sites@2023-01-01' = {
   name: functionAppStagingName
   location: location
-  kind: 'functionapp'
+  kind: 'functionapp,linux'
   identity: {
     type: 'SystemAssigned'
   }
@@ -221,7 +223,7 @@ resource functionAppStaging 'Microsoft.Web/sites@2023-01-01' = {
           value: 'model.pkl'
         }
       ]
-      pythonVersion: '3.12'
+      linuxFxVersion: 'Python|3.11'
     }
   }
 }

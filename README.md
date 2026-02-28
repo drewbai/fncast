@@ -428,7 +428,7 @@ After deploying via Bicep, you can create an Event Grid subscription pointing to
 
 ## CI
 
-- Build & Test: [\.github/workflows/ci.yml](.github/workflows/ci.yml) runs Python 3.12, installs dependencies, and executes `pytest` on push/PR.
+- Build & Test: [\.github/workflows/ci.yml](.github/workflows/ci.yml) runs Python 3.11, installs dependencies, and executes `pytest` on push/PR.
 - Deploy Functions: [\.github/workflows/deploy-functions.yml](.github/workflows/deploy-functions.yml) publishes the app to Azure using repository variable `AZURE_FUNCTIONAPP_NAME` and secret `AZURE_FUNCTIONAPP_PUBLISH_PROFILE`.
 
 ## Local Queues (Azurite)
