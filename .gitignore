@@ -104,3 +104,41 @@ htmlcov/
 *.egg-info/
 dist/
 build/
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pdb
+*.so
+*.dylib
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# uv environment
+.uv/
+
+# Packaging
+build/
+dist/
+*.egg-info/
+
+# VS Code
+.vscode/
+!.vscode/settings.json
+!.vscode/forge-python-contract.prompt
+
+# Pytest
+.pytest_cache/
+
+# Mypy
+.mypy_cache/
+
+# Ruff
+.ruff_cache/
+
+# Logs
+*.log

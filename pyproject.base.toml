@@ -1,0 +1,18 @@
+[project]
+requires-python = "==3.11.*"
+
+[tool.uv]
+python-preference = "system"
+dev-dependencies = [
+    "pytest>=8.0",
+    "ruff>=0.4",
+    "mypy>=1.10",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.mypy]
+python_version = "3.11"
+strict = true

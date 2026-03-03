@@ -2,33 +2,25 @@ name: CI
 
 on:
   push:
-    branches: [ main, dev ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ main, dev ]
-  workflow_dispatch:
+    branches: [ "main" ]
 
 jobs:
-  build-test:
-    runs-on: windows-latest
+  build:
+    runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
+      - uses: astral-sh/setup-uv@v1
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install -r requirements-dev.txt
+      - run: uv python install 3.11
 
-      - name: Run tests
-        run: pytest -q
+      - run: uv sync --frozen
 
-      - name: Validate folder structure
-        run: |
-          if (-not (Test-Path "HealthCheckFunction\__init__.py")) { exit 1 }
-          if (-not (Test-Path "InferenceFunction\__init__.py")) { exit 1 }
+      - run: uv run ruff check .
+
+      - run: uv run mypy .
+
+      - run: uv run pytest
