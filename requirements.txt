@@ -10,9 +10,5 @@ joblib
 numpy
 pandas
 
-# API/Web
-fastapi
-pydantic
-
 # Monitoring
 opencensus-ext-azure

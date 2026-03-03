@@ -159,6 +159,14 @@ resource functionApp 'Microsoft.Web/sites@2023-01-01' = {
           name: 'MODEL_BLOB_NAME'
           value: 'model.pkl'
         }
+        {
+          name: 'SCM_DO_BUILD_DURING_DEPLOYMENT'
+          value: '1'
+        }
+        {
+          name: 'ENABLE_ORYX_BUILD'
+          value: 'true'
+        }
       ]
       linuxFxVersion: 'Python|3.11'
     }
@@ -221,6 +229,14 @@ resource functionAppStaging 'Microsoft.Web/sites@2023-01-01' = {
         {
           name: 'MODEL_BLOB_NAME'
           value: 'model.pkl'
+        }
+        {
+          name: 'SCM_DO_BUILD_DURING_DEPLOYMENT'
+          value: '1'
+        }
+        {
+          name: 'ENABLE_ORYX_BUILD'
+          value: 'true'
         }
       ]
       linuxFxVersion: 'Python|3.11'
